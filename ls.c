@@ -10,7 +10,20 @@
 typedef struct flags_{
 	bool dotFiles;
 	bool rawSize;
+	bool humanSize;
 }flags;
+
+typedef struct filesize_{
+	int size;
+	char unit;
+}filesize;
+
+//Prints and destroys a filesize struct, returns a null pointer
+filesize* printFileSize(filesize* i){
+	printf("%d %c", i->size,i->unit);
+	free(i);
+	return 0x0;
+}
 
 
 void handleArgs(char* arg, flags* flag){
@@ -18,6 +31,7 @@ void handleArgs(char* arg, flags* flag){
 		switch(arg[i]){
 			case 'a': flag->dotFiles = true;break;
 			case 'l': flag->rawSize = true;break;
+			case 'h': flag->humanSize = true;break;
 			default: printf("Unknown arg %c passed\n",arg[i]);break;
 		}
 	}
@@ -30,9 +44,11 @@ flags* initFlags(){
 	if(def!=NULL){
 		def->dotFiles = false;
 		def->rawSize = false;
+		def->humanSize = false;
 	}
 	return def;
 }
+
 
 int getFileSize(struct dirent* file){
 	FILE* stream = fopen(file->d_name, "rb");
@@ -41,6 +57,34 @@ int getFileSize(struct dirent* file){
 	fclose(stream);
 	return size;
 }
+
+void printFormattedSize(struct dirent* file, flags* flag){
+	if(!(flag->rawSize || flag->humanSize)){
+		return;
+	}
+	printf(KWHT);
+	printf(": ");
+	//Exceptions
+	switch(file->d_type){
+		case DT_DIR: printf("Directory");return;
+	}
+	filesize* size = malloc(sizeof(filesize));
+	size->unit = ' ';
+	size->size = getFileSize(file);
+	if(flag->humanSize){
+		char* units = " KMG";
+		int i = 0;
+		while(size->size > 1000){
+			size->size /= 1000;
+			i++;
+		}
+		size->unit = units[i];
+	}
+	printFileSize(size);
+}
+
+	
+
 
 int main(int argc, char* argv[]){
 	flags* flags = initFlags();
@@ -73,15 +117,7 @@ int main(int argc, char* argv[]){
 					case DT_REG: printf(KWHT);break;
 				}
 				printf(cur->d_name);
-				//Size
-				if(flags->rawSize){
-					printf(KNRM);
-					printf(": ");
-					switch(cur->d_type){
-						case DT_DIR: printf(" directory");break;
-						default: printf(": %d bytes",getFileSize(cur));
-					}
-				}
+				printFormattedSize(cur, flags);
 				printf("\n");
 			}
 		}
