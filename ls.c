@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "colors.h"
 
@@ -49,14 +51,13 @@ flags* initFlags(){
 	return def;
 }
 
-
 int getFileSize(struct dirent* file){
-	FILE* stream = fopen(file->d_name, "rb");
-	fseek(stream,0L,SEEK_END);
-	int size = ftell(stream);
-	fclose(stream);
-	return size;
+  struct stat statbuf;
+  stat(file->d_name, &statbuf);
+  return statbuf.st_size;
 }
+
+
 
 void printFormattedSize(struct dirent* file, flags* flag){
 	if(!(flag->rawSize || flag->humanSize)){
@@ -123,6 +124,9 @@ int main(int argc, char* argv[]){
 		}
 
 	printf(KNRM);
+	closedir(stream);
+	free(abs);
+	free(flags);
 	return 0;
 }
 
